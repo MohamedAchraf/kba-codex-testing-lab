@@ -840,13 +840,9 @@
         ordered.forEach((entry, idx) => {
           const { student } = entry;
           const orderNumber = idx + 1;
+          const statusText = routeState.statuses[entry.idx];
           const marker = L.marker(student.coords, {
-            icon: L.divIcon({
-              html: `<div style="background:#0f766e;color:#fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:700;">${orderNumber}</div>`,
-              className: "route-order-icon",
-              iconSize: [30, 30],
-              iconAnchor: [15, 30],
-            }),
+            icon: makeOrderIcon(orderNumber, statusText),
             title: `${student.name} - ترتيب ${orderNumber}`,
           })
             .addTo(map)
@@ -915,6 +911,7 @@
             }<br />وقت المقطع: ${minutesText}<br />الحالة: ${statusText}`
           )
           .openPopup();
+        marker.setIcon(makeOrderIcon(clamped + 1, statusText));
       }
 
       updateStatus(
@@ -942,6 +939,7 @@
         await waitForMove();
         updateStatus("تم الوصول لآخر طالب. يمكنك الرجوع للأول أو للمدرسة.");
       }
+      refreshMarkerForIndex(idx);
     }
 
     function goToFirst() {
@@ -968,6 +966,31 @@
       await waitForMove();
       schoolMarker.openPopup();
       updateStatus("تم الانتقال إلى المدرسة.");
+    }
+
+    function getStatusColor(statusText) {
+      if (statusText === "حاضر") return "#16a34a";
+      if (statusText === "غائب") return "#e11d48";
+      return "#0f766e";
+    }
+
+    function makeOrderIcon(orderNumber, statusText) {
+      const color = getStatusColor(statusText);
+      return L.divIcon({
+        html: `<div style="background:${color};color:#fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:700;">${orderNumber}</div>`,
+        className: "route-order-icon",
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+      });
+    }
+
+    function refreshMarkerForIndex(idx) {
+      if (!routeState.orderLookup || routeState.orderLookup[idx] == null) return;
+      const pos = routeState.orderLookup[idx];
+      const marker = routeMarkers[pos];
+      if (!marker) return;
+      const statusText = routeState.statuses[idx];
+      marker.setIcon(makeOrderIcon(pos + 1, statusText));
     }
 
     function refreshListVisuals() {
