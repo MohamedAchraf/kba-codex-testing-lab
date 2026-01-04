@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>خريطة الطلاب - الدوحة</title>
+  <style>
+    /* تضمين أنماط Leaflet الأساسية لضمان ظهور الخريطة حتى في حال تعذر تحميل الـ CDN */
+    .leaflet-pane,
+    .leaflet-tile,
+    .leaflet-marker-icon,
+    .leaflet-marker-shadow,
+    .leaflet-tile-container,
+    .leaflet-pane > svg,
+    .leaflet-pane > canvas,
+    .leaflet-zoom-box,
+    .leaflet-image-layer,
+    .leaflet-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    .leaflet-container {
+      position: relative;
+      overflow: hidden;
+      outline: 0;
+      background: #ddd;
+    }
+
+    .leaflet-tile {
+      filter: inherit;
+      visibility: hidden;
+    }
+
+    .leaflet-tile-loaded {
+      visibility: inherit;
+    }
+
+    .leaflet-zoom-animated {
+      transform-origin: 0 0;
+    }
+
+    .leaflet-zoom-animated .leaflet-zoom-animated {
+      will-change: transform;
+    }
+
+    .leaflet-zoom-hide {
+      visibility: hidden;
+    }
+
+    .leaflet-interactive {
+      cursor: pointer;
+    }
+
+    .leaflet-pane {
+      z-index: 400;
+    }
+
+    .leaflet-tile-pane {
+      z-index: 200;
+    }
+
+    .leaflet-overlay-pane {
+      z-index: 400;
+    }
+
+    .leaflet-shadow-pane {
+      z-index: 500;
+    }
+
+    .leaflet-marker-pane {
+      z-index: 600;
+    }
+
+    .leaflet-tooltip-pane {
+      z-index: 650;
+    }
+
+    .leaflet-popup-pane {
+      z-index: 700;
+    }
+
+    .leaflet-map-pane {
+      z-index: 100;
+    }
+
+    .leaflet-control {
+      position: relative;
+      z-index: 800;
+      pointer-events: visiblePainted;
+      pointer-events: auto;
+    }
+
+    .leaflet-top,
+    .leaflet-bottom {
+      position: absolute;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .leaflet-top {
+      top: 0;
+    }
+
+    .leaflet-right {
+      right: 0;
+    }
+
+    .leaflet-bottom {
+      bottom: 0;
+    }
+
+    .leaflet-left {
+      left: 0;
+    }
+
+    .leaflet-control {
+      float: left;
+      clear: both;
+    }
+
+    .leaflet-control-zoom {
+      margin: 10px;
+      border: none;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+      border-radius: 4px;
+    }
+
+    .leaflet-control-zoom a {
+      background-color: #fff;
+      border-bottom: 1px solid #ddd;
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      color: #2c3e50;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .leaflet-control-zoom a:last-child {
+      border-bottom: none;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background: #f4f4f4;
+    }
+
+    .leaflet-touch .leaflet-control-zoom a {
+      width: 34px;
+      height: 34px;
+      line-height: 34px;
+    }
+
+    .leaflet-container .leaflet-control-attribution {
+      margin: 0;
+      padding: 0 5px;
+      color: #333;
+      font: 11px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .leaflet-fade-anim .leaflet-popup {
+      opacity: 0;
+      transition: opacity 0.2s linear;
+    }
+
+    .leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+      opacity: 1;
+    }
+
+    .leaflet-popup {
+      position: absolute;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .leaflet-popup-content-wrapper {
+      padding: 1px;
+      text-align: left;
+      border-radius: 12px;
+      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+    }
+
+    .leaflet-popup-content {
+      margin: 13px 19px;
+      line-height: 1.4;
+    }
+
+    .leaflet-popup-tip-container {
+      width: 40px;
+      height: 20px;
+      position: absolute;
+      left: 50%;
+      margin-left: -20px;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .leaflet-popup-tip {
+      width: 17px;
+      height: 17px;
+      padding: 1px;
+      margin: -10px auto 0;
+      transform: rotate(45deg);
+      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+    }
+
+    .leaflet-container a {
+      color: #0078a8;
+    }
+
+    .leaflet-container a.leaflet-popup-close-button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      padding: 4px 4px 0 0;
+      border: none;
+      text-align: center;
+      width: 18px;
+      height: 14px;
+      font: 16px/14px Tahoma, Verdana, sans-serif;
+      color: #c3c3c3;
+      text-decoration: none;
+      font-weight: bold;
+      background: transparent;
+    }
+
+    .leaflet-container a.leaflet-popup-close-button:hover {
+      color: #999;
+    }
+
+    .leaflet-marker-icon,
+    .leaflet-marker-shadow {
+      display: block;
+    }
+
+    .leaflet-tooltip-pane,
+    .leaflet-popup-pane {
+      pointer-events: none;
+    }
+
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+      background: #fff;
+      color: #2c3e50;
+    }
+
+    .leaflet-control-attribution a {
+      text-decoration: none;
+    }
+
+    /* نهاية أنماط Leaflet الأساسية المضمنة */
+
+    :root {
+      --primary: #0f766e;
+      --primary-light: #0fb5a8;
+      --bg: #f5f7fb;
+      --text: #0f172a;
+      --muted: #475569;
+      --card: #ffffff;
+      --shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Cairo", "Noto Naskh Arabic", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(120deg, var(--primary), var(--primary-light));
+      color: #fff;
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 1.4rem;
+      letter-spacing: 0.5px;
+    }
+
+    header .info {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    main {
+      flex: 1;
+      padding: 18px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      height: calc(100vh - 120px);
+      min-height: 520px;
+      direction: ltr;
+    }
+
+    .map-card,
+    .list-card {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      direction: rtl;
+    }
+
+    .map-card h2,
+    .list-card h2 {
+      margin: 0;
+      padding: 14px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 1.05rem;
+      color: var(--text);
+      background: #f8fafc;
+    }
+
+    #map {
+      flex: 1;
+      min-height: 360px;
+    }
+
+    .students {
+      list-style: none;
+      margin: 0;
+      padding: 10px 10px 4px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .student {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      gap: 12px;
+    }
+
+    .student:hover {
+      border-color: var(--primary-light);
+      box-shadow: 0 6px 18px rgba(15, 118, 110, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .student.active {
+      background: #ecfeff;
+      border-color: var(--primary);
+      box-shadow: 0 8px 22px rgba(15, 118, 110, 0.18);
+    }
+
+    .student .name {
+      font-weight: 700;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .student .area {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .student .controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .student input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .pill-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .pill-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .pill-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.16);
+    }
+
+    .pill-present {
+      background: linear-gradient(120deg, #0f766e, #16a34a);
+    }
+
+    .pill-absent {
+      background: linear-gradient(120deg, #be123c, #e11d48);
+    }
+
+    .actions {
+      padding: 10px;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .actions button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      background: linear-gradient(120deg, var(--primary), var(--primary-light));
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(15, 118, 110, 0.22);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .actions button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(15, 118, 110, 0.28);
+    }
+
+    .actions button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .nav-controls {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .nav-controls button {
+      border-radius: 12px;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.25);
+    }
+
+    .hint {
+      padding: 0 16px 14px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 0;
+      }
+
+      .map-card {
+        order: 2;
+      }
+
+      .list-card {
+        order: 1;
+      }
+    }
+
+    @media (max-width: 640px) {
+      header h1 {
+        font-size: 1.2rem;
+      }
+
+      .student {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>معلومات عامة</h1>
+    <div class="info">
+      <div>الصف: ٩ / أ</div>
+      <div>طريقة الاستخدام: اضغط على اسم الطالب للانتقال إلى موقعه على الخريطة.</div>
+      <div>ملاحظة: البيانات تجريبية وليست مواقع حقيقية.</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="layout">
+      <section class="map-card">
+        <h2>الخريطة التفاعلية - الدوحة</h2>
+        <div id="map" aria-label="خريطة الطلاب في الدوحة"></div>
+      </section>
+
+      <section class="list-card">
+        <h2>قائمة الطلاب</h2>
+        <ul class="students" id="students"></ul>
+        <div class="hint">اختر طالباً لعرض موقعه ومعرفة المنطقة التي ينتمي إليها داخل الدوحة.</div>
+      </section>
+    </div>
+  </main>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const students = [
+      { name: "خالد المري", area: "الوعب", coords: [25.2275, 51.4550] },
+      { name: "حمد السويدي", area: "السد", coords: [25.2140, 51.4415] },
+      { name: "عبدالله الكعبي", area: "فريج السودان", coords: [25.2332, 51.4441] },
+      { name: "سعيد النعيمي", area: "المعيذر الجنوبي", coords: [25.2098, 51.4559] },
+      { name: "فهد العذبة", area: "مدينة خليفة الجنوبية", coords: [25.2380, 51.4585] },
+      { name: "علي المهندي", area: "فريج بن محمود", coords: [25.2296, 51.4370] },
+      { name: "ناصر الهاجري", area: "المنصورة", coords: [25.2165, 51.4623] },
+      { name: "سالم النصر", area: "حي الهلال", coords: [25.2035, 51.4450] },
+      { name: "سعيد الكبيسي", area: "المطار القديم", coords: [25.2445, 51.4340] },
+      { name: "جاسم المعضادي", area: "نعيجة", coords: [25.2325, 51.4700] },
+      { name: "مبارك المناعي", area: "أبو هامور", coords: [25.2045, 51.4750] },
+      { name: "راشد الخليفي", area: "الوعب الشمالي", coords: [25.2472, 51.4542] },
+    ];
+
+    const schoolCoords = [25.220293729084005, 51.4492324189286];
+    const legColors = [
+      "#0f766e",
+      "#ea580c",
+      "#2563eb",
+      "#d97706",
+      "#c026d3",
+      "#16a34a",
+      "#db2777",
+      "#7c3aed",
+      "#0284c7",
+      "#e11d48",
+      "#0ea5e9",
+      "#9333ea",
+    ];
+
+    const map = L.map("map", {
+      zoomControl: true,
+      worldCopyJump: true,
+    }).setView(schoolCoords, 13.5);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    const studentMarkerIcon = L.icon({
+      iconUrl:
+        "data:image/svg+xml;base64,CjxzdmcgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJyB2aWV3Qm94PScwIDAgMzAgNDYnPgogIDxwYXRoIGZpbGw9JyMwZjc2NmUnIGQ9J00xNSAwQzcuMjcgMCAxIDYuMjcgMSAxNGMwIDEwLjA0IDEwLjczIDIyLjgzIDEzLjcgMjUuOThhMS44IDEuOCAwIDAgMCAyLjYgMEMxOC4yNyAzNi44MyAyOSAyNC4wNCAyOSAxNCAyOSA2LjI3IDIyLjczIDAgMTUgMHptMCAyMS41YTcuNSA3LjUgMCAxIDEgMC0xNSA3LjUgNy41IDAgMCAxIDAgMTV6Jy8+CiAgPGNpcmNsZSBjeD0nMTUnIGN5PScxNCcgcj0nNS41JyBmaWxsPScjZWNmZWZmJy8+Cjwvc3ZnPgo=",
+      iconSize: [30, 46],
+      iconAnchor: [15, 46],
+      popupAnchor: [0, -40],
+    });
+
+    const schoolMarker = L.marker(schoolCoords, {
+      title: "مدرسة خالد بن أحمد الإعدادية للبنين",
+      icon: studentMarkerIcon,
+    })
+      .addTo(map)
+      .bindPopup("مدرسة خالد بن أحمد الإعدادية للبنين")
+      .openPopup();
+
+    let activeMarker = null;
+    let routeLayers = [];
+    let routeMarkers = [];
+    let routeState = { ordered: [], legs: [], bounds: null, current: -1, orderLookup: {}, statuses: {} };
+    let navFirst;
+    let navPrev;
+    let navNext;
+    let navLast;
+    let navSchool;
+
+    const studentsList = document.getElementById("students");
+    const selectedStudents = new Set();
+    const selectionMarkers = new Map();
+
+    function setActiveStudent(originalIndex) {
+      document.querySelectorAll(".student").forEach((item) => {
+        item.classList.toggle("active", item.dataset.index === String(originalIndex));
+      });
+    }
+
+    function focusOnStudent(student, index) {
+      setActiveStudent(index);
+
+      const targetZoom = Math.max(map.getZoom(), 14);
+      map.flyTo(student.coords, targetZoom, { duration: 0.9, easeLinearity: 0.25 });
+
+      if (!activeMarker) {
+        activeMarker = L.marker(student.coords, {
+          title: student.name,
+          icon: studentMarkerIcon,
+        }).addTo(map);
+      } else {
+        activeMarker.setLatLng(student.coords);
+        activeMarker.setIcon(studentMarkerIcon);
+      }
+
+      const popupContent = `<strong>${student.name}</strong><br />منطقة: ${student.area}`;
+      activeMarker.bindPopup(popupContent, { autoClose: true }).openPopup();
+    }
+
+    function ensureSelectionMarker(index, student) {
+      if (selectionMarkers.has(index)) return;
+      const marker = L.marker(student.coords, {
+        title: student.name,
+        icon: studentMarkerIcon,
+      }).addTo(map);
+      marker.bindPopup(student.name);
+      selectionMarkers.set(index, marker);
+    }
+
+    function removeSelectionMarker(index) {
+      const marker = selectionMarkers.get(index);
+      if (marker) {
+        marker.remove();
+        selectionMarkers.delete(index);
+      }
+    }
+
+    function updateStatus(message) {
+      const statusEl = document.getElementById("status");
+      if (statusEl) statusEl.textContent = message;
+    }
+
+    function toggleSelection(index, checkboxEl) {
+      if (selectedStudents.has(index)) {
+        selectedStudents.delete(index);
+        removeSelectionMarker(index);
+      } else {
+        selectedStudents.add(index);
+        ensureSelectionMarker(index, students[index]);
+      }
+      checkboxEl.checked = selectedStudents.has(index);
+      checkboxEl.setAttribute("aria-checked", checkboxEl.checked);
+      updateStatus(
+        selectedStudents.size
+          ? `عدد الطلاب المحددين: ${selectedStudents.size}`
+          : "اختر طلاباً ثم اضغط على زر حساب المسار."
+      );
+    }
+
+    function haversineDistance([lat1, lon1], [lat2, lon2]) {
+      const toRad = (deg) => (deg * Math.PI) / 180;
+      const R = 6371e3;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function waitForMove() {
+      return new Promise((resolve) => {
+        const handler = () => {
+          map.off("moveend", handler);
+          resolve();
+        };
+        map.on("moveend", handler);
+      });
+    }
+
+    function formatMinutes(seconds) {
+      if (seconds == null) return "غير متوفر";
+      const mins = Math.round(seconds / 60);
+      return `${mins} دقيقة تقريباً`;
+    }
+
+    async function computeRoute() {
+      if (selectedStudents.size === 0) {
+        updateStatus("الرجاء اختيار طالب واحد على الأقل لحساب المسار.");
+        return;
+      }
+
+      routeButton.disabled = true;
+      updateStatus("جاري حساب أقصر مسار على الطرق...");
+
+      const remaining = Array.from(selectedStudents).map((idx) => ({ idx, student: students[idx] }));
+      const ordered = [];
+      let current = { name: "المدرسة", coords: schoolCoords };
+
+      while (remaining.length) {
+        let nearestIndex = 0;
+        let nearestDist = Infinity;
+
+        remaining.forEach((entry, idx) => {
+          const dist = haversineDistance(current.coords, entry.student.coords);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestIndex = idx;
+          }
+        });
+
+        const [next] = remaining.splice(nearestIndex, 1);
+        ordered.push(next);
+        current = next.student;
+      }
+
+      const routeCoords = [schoolCoords, ...ordered.map((s) => s.student.coords), schoolCoords];
+      const coordsParam = routeCoords
+        .map(([lat, lon]) => `${lon},${lat}`)
+        .join(";");
+
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson&steps=true`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("فشل جلب المسار من خدمة الطرق.");
+        const data = await response.json();
+        if (!data.routes || !data.routes.length) throw new Error("لم يتم العثور على مسار.");
+
+        routeLayers.forEach((layer) => layer.remove());
+        routeLayers = [];
+        routeMarkers.forEach((marker) => marker.remove());
+        routeMarkers = [];
+
+        const legs = data.routes[0].legs || [];
+
+        legs.forEach((leg, idx) => {
+          const legCoords = [];
+          (leg.steps || []).forEach((step) => {
+            if (step.geometry && step.geometry.coordinates) {
+              step.geometry.coordinates.forEach(([lon, lat]) => legCoords.push([lat, lon]));
+            }
+          });
+          if (legCoords.length) {
+            const color = legColors[idx % legColors.length];
+            const legLine = L.polyline(legCoords, {
+              color,
+              weight: 5,
+              opacity: 0.9,
+              lineJoin: "round",
+            }).addTo(map);
+            routeLayers.push(legLine);
+          }
+        });
+
+        renderList(ordered.map((o) => o.idx));
+
+        ordered.forEach((entry, idx) => {
+          const { student } = entry;
+          const orderNumber = idx + 1;
+          const marker = L.marker(student.coords, {
+            icon: L.divIcon({
+              html: `<div style="background:#0f766e;color:#fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:700;">${orderNumber}</div>`,
+              className: "route-order-icon",
+              iconSize: [30, 30],
+              iconAnchor: [15, 30],
+            }),
+            title: `${student.name} - ترتيب ${orderNumber}`,
+          })
+            .addTo(map)
+            .bindPopup(`<strong>${orderNumber}. ${student.name}</strong><br />منطقة: ${student.area}`);
+          routeMarkers.push(marker);
+        });
+
+        const bounds = L.latLngBounds(routeCoords.map(([lat, lon]) => [lat, lon]));
+        routeLayers.forEach((layer) => bounds.extend(layer.getBounds()));
+
+        const orderLookup = {};
+        ordered.forEach((entry, pos) => {
+          orderLookup[entry.idx] = pos;
+        });
+
+        routeState = { ordered, legs, bounds, current: -1, orderLookup, statuses: {} };
+        routeButton.disabled = false;
+        if (navNext) navNext.disabled = false;
+        if (navPrev) navPrev.disabled = false;
+        if (navFirst) navFirst.disabled = false;
+        if (navLast) navLast.disabled = false;
+        if (navSchool) navSchool.disabled = false;
+
+        map.flyTo(schoolCoords, 13.5, { duration: 1, easeLinearity: 0.25 });
+        await waitForMove();
+        schoolMarker.openPopup();
+        updateStatus(
+          `المسار جاهز. استخدم أزرار كل طالب (حاضر/غائب) أو أزرار التنقل للتحرك بين الطلاب بالترتيب.`
+        );
+      } catch (error) {
+        console.error(error);
+        updateStatus("تعذر حساب المسار عبر الطرق. تأكد من الاتصال بالإنترنت ثم حاول مجدداً.");
+      } finally {
+        if (routeButton.disabled) routeButton.disabled = false;
+      }
+    }
+
+    async function goToStop(position, statusLabel) {
+      if (!routeState.ordered.length) {
+        updateStatus("لم يتم حساب مسار بعد.");
+        return;
+      }
+
+      const clamped = Math.max(0, Math.min(position, routeState.ordered.length - 1));
+      routeState.current = clamped;
+      const stop = routeState.ordered[clamped];
+      const legDuration = routeState.legs[clamped]?.duration;
+      const minutesText = formatMinutes(legDuration);
+
+      if (statusLabel) {
+        routeState.statuses[stop.idx] = statusLabel;
+      }
+
+      setActiveStudent(stop.idx);
+
+      map.flyTo(stop.student.coords, 15.5, { duration: 1.1, easeLinearity: 0.25 });
+      await waitForMove();
+
+      const marker = routeMarkers[clamped];
+      const statusText = routeState.statuses[stop.idx] || "لم يتم التحديد";
+      if (marker) {
+        marker
+          .bindPopup(
+            `<strong>${clamped + 1}. ${stop.student.name}</strong><br />منطقة: ${
+              stop.student.area
+            }<br />وقت المقطع: ${minutesText}<br />الحالة: ${statusText}`
+          )
+          .openPopup();
+      }
+
+      updateStatus(
+        `الآن عند ${clamped + 1}. ${stop.student.name} — وقت المقطع: ${minutesText} — الحالة: ${statusText}`
+      );
+    }
+
+    async function markAndAdvance(idx, label) {
+      if (!routeState.ordered.length) {
+        updateStatus("لم يتم حساب مسار بعد.");
+        return;
+      }
+      const pos = routeState.orderLookup[idx];
+      if (pos == null) {
+        updateStatus("الطالب غير موجود في المسار الحالي.");
+        return;
+      }
+      await goToStop(pos, label);
+      const nextPos = Math.min(routeState.ordered.length - 1, pos + 1);
+      if (nextPos !== pos) {
+        await goToStop(nextPos);
+      } else {
+        map.fitBounds(routeState.bounds, { padding: [40, 40], animate: true, duration: 1.1 });
+        await waitForMove();
+        updateStatus("تم الوصول لآخر طالب. يمكنك الرجوع للأول أو للمدرسة.");
+      }
+    }
+
+    function goToFirst() {
+      goToStop(0);
+    }
+
+    function goToLast() {
+      goToStop(routeState.ordered.length - 1);
+    }
+
+    function goToNext() {
+      const target =
+        routeState.current < 0 ? 0 : Math.min(routeState.current + 1, routeState.ordered.length - 1);
+      goToStop(target);
+    }
+
+    function goToPrev() {
+      const target = routeState.current <= 0 ? 0 : routeState.current - 1;
+      goToStop(target);
+    }
+
+    async function goToSchool() {
+      map.flyTo(schoolCoords, 13.5, { duration: 1, easeLinearity: 0.25 });
+      await waitForMove();
+      schoolMarker.openPopup();
+      updateStatus("تم الانتقال إلى المدرسة.");
+    }
+
+    function renderList(orderIndices) {
+      studentsList.innerHTML = "";
+      orderIndices.forEach((index) => {
+        const student = students[index];
+        const item = document.createElement("li");
+        item.className = "student";
+        item.dataset.index = index;
+        item.setAttribute("role", "button");
+        item.setAttribute("tabindex", "0");
+
+        const controls = document.createElement("div");
+        controls.className = "controls";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = selectedStudents.has(index);
+        checkbox.setAttribute("aria-label", `تحديد ${student.name} للمسار`);
+        checkbox.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleSelection(index, checkbox);
+        });
+        controls.appendChild(checkbox);
+
+        const pillGroup = document.createElement("div");
+        pillGroup.className = "pill-group";
+
+        const presentBtn = document.createElement("button");
+        presentBtn.className = "pill-btn pill-present";
+        presentBtn.textContent = "حاضر";
+        presentBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          markAndAdvance(index, "حاضر");
+        });
+
+        const absentBtn = document.createElement("button");
+        absentBtn.className = "pill-btn pill-absent";
+        absentBtn.textContent = "غائب";
+        absentBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          markAndAdvance(index, "غائب");
+        });
+
+        pillGroup.appendChild(presentBtn);
+        pillGroup.appendChild(absentBtn);
+
+        const name = document.createElement("div");
+        name.className = "name";
+        name.textContent = student.name;
+
+        const area = document.createElement("div");
+        area.className = "area";
+        area.textContent = student.area;
+
+        item.appendChild(controls);
+        item.appendChild(pillGroup);
+        item.appendChild(name);
+        item.appendChild(area);
+
+        item.addEventListener("click", () => focusOnStudent(student, index));
+        item.addEventListener("keypress", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            focusOnStudent(student, index);
+          }
+        });
+
+        studentsList.appendChild(item);
+      });
+    }
+
+    renderList(students.map((_, idx) => idx));
+    focusOnStudent(students[0], 0);
+
+    const actionsContainer = document.createElement("div");
+    actionsContainer.className = "actions";
+
+    const selectAllButton = document.createElement("button");
+    selectAllButton.textContent = "تحديد كل الطلاب";
+    selectAllButton.addEventListener("click", () => {
+      students.forEach((student, idx) => {
+        selectedStudents.add(idx);
+        ensureSelectionMarker(idx, student);
+      });
+      document.querySelectorAll(".student input[type='checkbox']").forEach((cb) => {
+        cb.checked = true;
+        cb.setAttribute("aria-checked", "true");
+      });
+      updateStatus(`عدد الطلاب المحددين: ${students.length}`);
+    });
+
+    const routeButton = document.createElement("button");
+    routeButton.textContent = "احسب أقصر مسار (طرق) يمر بجميع الطلاب المحددين";
+    routeButton.addEventListener("click", computeRoute);
+
+    const status = document.createElement("div");
+    status.id = "status";
+    status.className = "status";
+    status.textContent = "اختر طلاباً ثم اضغط على زر حساب المسار.";
+
+    const navControls = document.createElement("div");
+    navControls.className = "nav-controls";
+
+    navFirst = document.createElement("button");
+    navFirst.textContent = "⏮ الأول";
+    navFirst.disabled = true;
+    navFirst.addEventListener("click", goToFirst);
+
+    navPrev = document.createElement("button");
+    navPrev.textContent = "⏪ السابق";
+    navPrev.disabled = true;
+    navPrev.addEventListener("click", goToPrev);
+
+    navSchool = document.createElement("button");
+    navSchool.textContent = "⏺ المدرسة";
+    navSchool.disabled = true;
+    navSchool.addEventListener("click", goToSchool);
+
+    navNext = document.createElement("button");
+    navNext.textContent = "⏩ التالي";
+    navNext.disabled = true;
+    navNext.addEventListener("click", goToNext);
+
+    navLast = document.createElement("button");
+    navLast.textContent = "⏭ الأخير";
+    navLast.disabled = true;
+    navLast.addEventListener("click", goToLast);
+
+    navControls.appendChild(navFirst);
+    navControls.appendChild(navPrev);
+    navControls.appendChild(navSchool);
+    navControls.appendChild(navNext);
+    navControls.appendChild(navLast);
+
+    actionsContainer.appendChild(selectAllButton);
+    actionsContainer.appendChild(routeButton);
+    actionsContainer.appendChild(navControls);
+    actionsContainer.appendChild(status);
+    document.querySelector(".list-card").appendChild(actionsContainer);
+  </script>
+</body>
+</html>
