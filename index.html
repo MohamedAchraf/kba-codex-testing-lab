@@ -398,6 +398,35 @@
       cursor: pointer;
     }
 
+    .pill-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .pill-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .pill-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.16);
+    }
+
+    .pill-present {
+      background: linear-gradient(120deg, #0f766e, #16a34a);
+    }
+
+    .pill-absent {
+      background: linear-gradient(120deg, #be123c, #e11d48);
+    }
+
     .actions {
       padding: 10px;
       border-top: 1px solid #e2e8f0;
@@ -434,6 +463,22 @@
     .status {
       color: var(--muted);
       font-size: 0.95rem;
+    }
+
+    .nav-controls {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .nav-controls button {
+      border-radius: 12px;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.25);
     }
 
     .hint {
@@ -563,7 +608,12 @@
     let activeMarker = null;
     let routeLayers = [];
     let routeMarkers = [];
-    let routeState = { ordered: [], legs: [], bounds: null, current: -1 };
+    let routeState = { ordered: [], legs: [], bounds: null, current: -1, orderLookup: {}, statuses: {} };
+    let navFirst;
+    let navPrev;
+    let navNext;
+    let navLast;
+    let navSchool;
 
     const studentsList = document.getElementById("students");
     const selectedStudents = new Set();
@@ -754,16 +804,24 @@
         const bounds = L.latLngBounds(routeCoords.map(([lat, lon]) => [lat, lon]));
         routeLayers.forEach((layer) => bounds.extend(layer.getBounds()));
 
-        routeState = { ordered, legs, bounds, current: -1 };
+        const orderLookup = {};
+        ordered.forEach((entry, pos) => {
+          orderLookup[entry.idx] = pos;
+        });
+
+        routeState = { ordered, legs, bounds, current: -1, orderLookup, statuses: {} };
         routeButton.disabled = false;
-        presentButton.disabled = false;
-        absentButton.disabled = false;
+        if (navNext) navNext.disabled = false;
+        if (navPrev) navPrev.disabled = false;
+        if (navFirst) navFirst.disabled = false;
+        if (navLast) navLast.disabled = false;
+        if (navSchool) navSchool.disabled = false;
 
         map.flyTo(schoolCoords, 13.5, { duration: 1, easeLinearity: 0.25 });
         await waitForMove();
         schoolMarker.openPopup();
         updateStatus(
-          `المسار جاهز. استخدم الأزرار للتنقل بين الطلاب بالترتيب (حاضر/غير موجود).`
+          `المسار جاهز. استخدم أزرار كل طالب (حاضر/غائب) أو أزرار التنقل للتحرك بين الطلاب بالترتيب.`
         );
       } catch (error) {
         console.error(error);
@@ -773,45 +831,89 @@
       }
     }
 
-    async function goToNextStop(statusLabel) {
+    async function goToStop(position, statusLabel) {
       if (!routeState.ordered.length) {
         updateStatus("لم يتم حساب مسار بعد.");
         return;
       }
 
-      routeState.current += 1;
+      const clamped = Math.max(0, Math.min(position, routeState.ordered.length - 1));
+      routeState.current = clamped;
+      const stop = routeState.ordered[clamped];
+      const legDuration = routeState.legs[clamped]?.duration;
+      const minutesText = formatMinutes(legDuration);
 
-      if (routeState.current >= routeState.ordered.length) {
-        presentButton.disabled = true;
-        absentButton.disabled = true;
-        map.fitBounds(routeState.bounds, { padding: [40, 40], animate: true, duration: 1.1 });
-        await waitForMove();
-        updateStatus("تم استعراض كل الطلاب والعودة إلى أفضل عرض للمسار.");
-        return;
+      if (statusLabel) {
+        routeState.statuses[stop.idx] = statusLabel;
       }
 
-      const stop = routeState.ordered[routeState.current];
-      const legDuration = routeState.legs[routeState.current]?.duration;
-      const minutesText = formatMinutes(legDuration);
       setActiveStudent(stop.idx);
 
       map.flyTo(stop.student.coords, 15.5, { duration: 1.1, easeLinearity: 0.25 });
       await waitForMove();
 
-      const marker = routeMarkers[routeState.current];
+      const marker = routeMarkers[clamped];
+      const statusText = routeState.statuses[stop.idx] || "لم يتم التحديد";
       if (marker) {
         marker
           .bindPopup(
-            `<strong>${routeState.current + 1}. ${stop.student.name}</strong><br />منطقة: ${
+            `<strong>${clamped + 1}. ${stop.student.name}</strong><br />منطقة: ${
               stop.student.area
-            }<br />وقت المقطع: ${minutesText}<br />الحالة: ${statusLabel}`
+            }<br />وقت المقطع: ${minutesText}<br />الحالة: ${statusText}`
           )
           .openPopup();
       }
 
       updateStatus(
-        `الآن عند ${routeState.current + 1}. ${stop.student.name} — وقت المقطع: ${minutesText} — الحالة: ${statusLabel}`
+        `الآن عند ${clamped + 1}. ${stop.student.name} — وقت المقطع: ${minutesText} — الحالة: ${statusText}`
       );
+    }
+
+    async function markAndAdvance(idx, label) {
+      if (!routeState.ordered.length) {
+        updateStatus("لم يتم حساب مسار بعد.");
+        return;
+      }
+      const pos = routeState.orderLookup[idx];
+      if (pos == null) {
+        updateStatus("الطالب غير موجود في المسار الحالي.");
+        return;
+      }
+      await goToStop(pos, label);
+      const nextPos = Math.min(routeState.ordered.length - 1, pos + 1);
+      if (nextPos !== pos) {
+        await goToStop(nextPos);
+      } else {
+        map.fitBounds(routeState.bounds, { padding: [40, 40], animate: true, duration: 1.1 });
+        await waitForMove();
+        updateStatus("تم الوصول لآخر طالب. يمكنك الرجوع للأول أو للمدرسة.");
+      }
+    }
+
+    function goToFirst() {
+      goToStop(0);
+    }
+
+    function goToLast() {
+      goToStop(routeState.ordered.length - 1);
+    }
+
+    function goToNext() {
+      const target =
+        routeState.current < 0 ? 0 : Math.min(routeState.current + 1, routeState.ordered.length - 1);
+      goToStop(target);
+    }
+
+    function goToPrev() {
+      const target = routeState.current <= 0 ? 0 : routeState.current - 1;
+      goToStop(target);
+    }
+
+    async function goToSchool() {
+      map.flyTo(schoolCoords, 13.5, { duration: 1, easeLinearity: 0.25 });
+      await waitForMove();
+      schoolMarker.openPopup();
+      updateStatus("تم الانتقال إلى المدرسة.");
     }
 
     function renderList(orderIndices) {
@@ -837,6 +939,28 @@
         });
         controls.appendChild(checkbox);
 
+        const pillGroup = document.createElement("div");
+        pillGroup.className = "pill-group";
+
+        const presentBtn = document.createElement("button");
+        presentBtn.className = "pill-btn pill-present";
+        presentBtn.textContent = "حاضر";
+        presentBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          markAndAdvance(index, "حاضر");
+        });
+
+        const absentBtn = document.createElement("button");
+        absentBtn.className = "pill-btn pill-absent";
+        absentBtn.textContent = "غائب";
+        absentBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          markAndAdvance(index, "غائب");
+        });
+
+        pillGroup.appendChild(presentBtn);
+        pillGroup.appendChild(absentBtn);
+
         const name = document.createElement("div");
         name.className = "name";
         name.textContent = student.name;
@@ -846,6 +970,7 @@
         area.textContent = student.area;
 
         item.appendChild(controls);
+        item.appendChild(pillGroup);
         item.appendChild(name);
         item.appendChild(area);
 
@@ -885,25 +1010,48 @@
     routeButton.textContent = "احسب أقصر مسار (طرق) يمر بجميع الطلاب المحددين";
     routeButton.addEventListener("click", computeRoute);
 
-    const presentButton = document.createElement("button");
-    presentButton.textContent = "انتقال (حاضر)";
-    presentButton.disabled = true;
-    presentButton.addEventListener("click", () => goToNextStop("حاضر"));
-
-    const absentButton = document.createElement("button");
-    absentButton.textContent = "انتقال (غير موجود)";
-    absentButton.disabled = true;
-    absentButton.addEventListener("click", () => goToNextStop("غير موجود"));
-
     const status = document.createElement("div");
     status.id = "status";
     status.className = "status";
     status.textContent = "اختر طلاباً ثم اضغط على زر حساب المسار.";
 
+    const navControls = document.createElement("div");
+    navControls.className = "nav-controls";
+
+    navFirst = document.createElement("button");
+    navFirst.textContent = "⏮ الأول";
+    navFirst.disabled = true;
+    navFirst.addEventListener("click", goToFirst);
+
+    navPrev = document.createElement("button");
+    navPrev.textContent = "⏪ السابق";
+    navPrev.disabled = true;
+    navPrev.addEventListener("click", goToPrev);
+
+    navSchool = document.createElement("button");
+    navSchool.textContent = "⏺ المدرسة";
+    navSchool.disabled = true;
+    navSchool.addEventListener("click", goToSchool);
+
+    navNext = document.createElement("button");
+    navNext.textContent = "⏩ التالي";
+    navNext.disabled = true;
+    navNext.addEventListener("click", goToNext);
+
+    navLast = document.createElement("button");
+    navLast.textContent = "⏭ الأخير";
+    navLast.disabled = true;
+    navLast.addEventListener("click", goToLast);
+
+    navControls.appendChild(navFirst);
+    navControls.appendChild(navPrev);
+    navControls.appendChild(navSchool);
+    navControls.appendChild(navNext);
+    navControls.appendChild(navLast);
+
     actionsContainer.appendChild(selectAllButton);
     actionsContainer.appendChild(routeButton);
-    actionsContainer.appendChild(presentButton);
-    actionsContainer.appendChild(absentButton);
+    actionsContainer.appendChild(navControls);
     actionsContainer.appendChild(status);
     document.querySelector(".list-card").appendChild(actionsContainer);
   </script>
