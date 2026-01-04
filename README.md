@@ -1,2 +1,9 @@
 # kba-codex-testing-lab
-Khalid Bin Ahmed Prep School — Codex testing lab for students (tasks + tests).
+Khalid Bin Ahmed Preparatory School for Boys — Student Codex Testing Lab
+
+## Purpose
+A sandbox repository for students to practice using Codex:
+- Fix bugs
+- Add tests
+- Refactor code
+- Improve documentation
