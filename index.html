@@ -536,6 +536,7 @@
 <body>
   <header>
     <h1>معلومات عامة</h1>
+    let animationInProgress = false;
     <div class="info">
       <div>الصف: ٩ / أ</div>
       <div>طريقة الاستخدام: اضغط على اسم الطالب للانتقال إلى موقعه على الخريطة.</div>
@@ -619,6 +620,53 @@
       document.querySelectorAll(".student").forEach((item, idx) => {
         item.classList.toggle("active", idx === index);
       });
+    }
+
+    function waitForMove() {
+      return new Promise((resolve) => {
+        const handler = () => {
+          map.off("moveend", handler);
+          resolve();
+        };
+        map.on("moveend", handler);
+      });
+    }
+
+    function formatMinutes(seconds) {
+      if (seconds == null) return "غير متوفر";
+      const mins = Math.round(seconds / 60);
+      return `${mins} دقيقة تقريباً`;
+    }
+
+    async function animateRoute(orderedStops, legs, bounds) {
+      animationInProgress = true;
+      updateStatus("جاري استعراض المسار من المدرسة ثم بين الطلاب...");
+
+      map.flyTo(schoolCoords, 13.5, { duration: 1.1, easeLinearity: 0.2 });
+      await waitForMove();
+      schoolMarker.openPopup();
+
+      for (let i = 0; i < orderedStops.length; i++) {
+        const stop = orderedStops[i];
+        const legDuration = legs[i]?.duration;
+        const minutesText = formatMinutes(legDuration);
+        map.flyTo(stop.coords, 15, { duration: 1.1, easeLinearity: 0.2 });
+        await waitForMove();
+        const marker = routeMarkers[i];
+        if (marker) {
+          marker
+            .bindPopup(
+              `<strong>${i + 1}. ${stop.name}</strong><br />منطقة: ${stop.area}<br />وقت المقطع: ${minutesText}`
+            )
+            .openPopup();
+        }
+        updateStatus(`الآن عند ${i + 1}. ${stop.name} — وقت المقطع: ${minutesText}`);
+      }
+
+      map.fitBounds(bounds, { padding: [40, 40], animate: true, duration: 1.1 });
+      await waitForMove();
+      updateStatus("تم استعراض المسار بالكامل مع أفضل تكبير.");
+      animationInProgress = false;
     }
 
     function focusOnStudent(student, index) {
@@ -706,7 +754,7 @@
       const R = 6371e3;
       const dLat = toRad(lat2 - lat1);
       const dLon = toRad(lon2 - lon1);
-      const a =
+        await animateRoute(ordered, legs, bounds);
         Math.sin(dLat / 2) ** 2 +
         Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
