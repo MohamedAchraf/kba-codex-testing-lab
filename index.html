@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>خريطة الطلاب - الدوحة</title>
+  <style>
+    /* تضمين أنماط Leaflet الأساسية لضمان ظهور الخريطة حتى في حال تعذر تحميل الـ CDN */
+    .leaflet-pane,
+    .leaflet-tile,
+    .leaflet-marker-icon,
+    .leaflet-marker-shadow,
+    .leaflet-tile-container,
+    .leaflet-pane > svg,
+    .leaflet-pane > canvas,
+    .leaflet-zoom-box,
+    .leaflet-image-layer,
+    .leaflet-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    .leaflet-container {
+      position: relative;
+      overflow: hidden;
+      outline: 0;
+      background: #ddd;
+    }
+
+    .leaflet-tile {
+      filter: inherit;
+      visibility: hidden;
+    }
+
+    .leaflet-tile-loaded {
+      visibility: inherit;
+    }
+
+    .leaflet-zoom-animated {
+      transform-origin: 0 0;
+    }
+
+    .leaflet-zoom-animated .leaflet-zoom-animated {
+      will-change: transform;
+    }
+
+    .leaflet-zoom-hide {
+      visibility: hidden;
+    }
+
+    .leaflet-interactive {
+      cursor: pointer;
+    }
+
+    .leaflet-pane {
+      z-index: 400;
+    }
+
+    .leaflet-tile-pane {
+      z-index: 200;
+    }
+
+    .leaflet-overlay-pane {
+      z-index: 400;
+    }
+
+    .leaflet-shadow-pane {
+      z-index: 500;
+    }
+
+    .leaflet-marker-pane {
+      z-index: 600;
+    }
+
+    .leaflet-tooltip-pane {
+      z-index: 650;
+    }
+
+    .leaflet-popup-pane {
+      z-index: 700;
+    }
+
+    .leaflet-map-pane {
+      z-index: 100;
+    }
+
+    .leaflet-control {
+      position: relative;
+      z-index: 800;
+      pointer-events: visiblePainted;
+      pointer-events: auto;
+    }
+
+    .leaflet-top,
+    .leaflet-bottom {
+      position: absolute;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .leaflet-top {
+      top: 0;
+    }
+
+    .leaflet-right {
+      right: 0;
+    }
+
+    .leaflet-bottom {
+      bottom: 0;
+    }
+
+    .leaflet-left {
+      left: 0;
+    }
+
+    .leaflet-control {
+      float: left;
+      clear: both;
+    }
+
+    .leaflet-control-zoom {
+      margin: 10px;
+      border: none;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+      border-radius: 4px;
+    }
+
+    .leaflet-control-zoom a {
+      background-color: #fff;
+      border-bottom: 1px solid #ddd;
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      color: #2c3e50;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .leaflet-control-zoom a:last-child {
+      border-bottom: none;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background: #f4f4f4;
+    }
+
+    .leaflet-touch .leaflet-control-zoom a {
+      width: 34px;
+      height: 34px;
+      line-height: 34px;
+    }
+
+    .leaflet-container .leaflet-control-attribution {
+      margin: 0;
+      padding: 0 5px;
+      color: #333;
+      font: 11px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .leaflet-fade-anim .leaflet-popup {
+      opacity: 0;
+      transition: opacity 0.2s linear;
+    }
+
+    .leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+      opacity: 1;
+    }
+
+    .leaflet-popup {
+      position: absolute;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .leaflet-popup-content-wrapper {
+      padding: 1px;
+      text-align: left;
+      border-radius: 12px;
+      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+    }
+
+    .leaflet-popup-content {
+      margin: 13px 19px;
+      line-height: 1.4;
+    }
+
+    .leaflet-popup-tip-container {
+      width: 40px;
+      height: 20px;
+      position: absolute;
+      left: 50%;
+      margin-left: -20px;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .leaflet-popup-tip {
+      width: 17px;
+      height: 17px;
+      padding: 1px;
+      margin: -10px auto 0;
+      transform: rotate(45deg);
+      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+    }
+
+    .leaflet-container a {
+      color: #0078a8;
+    }
+
+    .leaflet-container a.leaflet-popup-close-button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      padding: 4px 4px 0 0;
+      border: none;
+      text-align: center;
+      width: 18px;
+      height: 14px;
+      font: 16px/14px Tahoma, Verdana, sans-serif;
+      color: #c3c3c3;
+      text-decoration: none;
+      font-weight: bold;
+      background: transparent;
+    }
+
+    .leaflet-container a.leaflet-popup-close-button:hover {
+      color: #999;
+    }
+
+    .leaflet-marker-icon,
+    .leaflet-marker-shadow {
+      display: block;
+    }
+
+    .leaflet-tooltip-pane,
+    .leaflet-popup-pane {
+      pointer-events: none;
+    }
+
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+      background: #fff;
+      color: #2c3e50;
+    }
+
+    .leaflet-control-attribution a {
+      text-decoration: none;
+    }
+
+    /* نهاية أنماط Leaflet الأساسية المضمنة */
+
+    :root {
+      --primary: #0f766e;
+      --primary-light: #0fb5a8;
+      --bg: #f5f7fb;
+      --text: #0f172a;
+      --muted: #475569;
+      --card: #ffffff;
+      --shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Cairo", "Noto Naskh Arabic", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(120deg, var(--primary), var(--primary-light));
+      color: #fff;
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 1.4rem;
+      letter-spacing: 0.5px;
+    }
+
+    header .info {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    main {
+      flex: 1;
+      padding: 18px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      height: calc(100vh - 120px);
+      min-height: 520px;
+    }
+
+    .map-card,
+    .list-card {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .map-card h2,
+    .list-card h2 {
+      margin: 0;
+      padding: 14px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 1.05rem;
+      color: var(--text);
+      background: #f8fafc;
+    }
+
+    #map {
+      flex: 1;
+      min-height: 360px;
+    }
+
+    .students {
+      list-style: none;
+      margin: 0;
+      padding: 10px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .student {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .student:hover {
+      border-color: var(--primary-light);
+      box-shadow: 0 6px 18px rgba(15, 118, 110, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .student.active {
+      background: #ecfeff;
+      border-color: var(--primary);
+      box-shadow: 0 8px 22px rgba(15, 118, 110, 0.18);
+    }
+
+    .student .name {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .student .area {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .hint {
+      padding: 0 16px 14px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 0;
+      }
+
+      .map-card {
+        order: 2;
+      }
+
+      .list-card {
+        order: 1;
+      }
+    }
+
+    @media (max-width: 640px) {
+      header h1 {
+        font-size: 1.2rem;
+      }
+
+      .student {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>معلومات عامة</h1>
+    <div class="info">
+      <div>الصف: ٩ / أ</div>
+      <div>طريقة الاستخدام: اضغط على اسم الطالب للانتقال إلى موقعه على الخريطة.</div>
+      <div>ملاحظة: البيانات تجريبية وليست مواقع حقيقية.</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="layout">
+      <section class="map-card">
+        <h2>الخريطة التفاعلية - الدوحة</h2>
+        <div id="map" aria-label="خريطة الطلاب في الدوحة"></div>
+      </section>
+
+      <section class="list-card">
+        <h2>قائمة الطلاب</h2>
+        <ul class="students" id="students"></ul>
+        <div class="hint">اختر طالباً لعرض موقعه ومعرفة المنطقة التي ينتمي إليها داخل الدوحة.</div>
+      </section>
+    </div>
+  </main>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const students = [
+      { name: "سارة الكواري", area: "كورنيش الدوحة", coords: [25.3009, 51.5384] },
+      { name: "محمد السويدي", area: "الدفنة", coords: [25.3330, 51.5271] },
+      { name: "أحمد الكعبي", area: "السد", coords: [25.2819, 51.5134] },
+      { name: "حصة النعيمي", area: "الريان القديم", coords: [25.2865, 51.4245] },
+      { name: "فهد العذبة", area: "مشيرب", coords: [25.2856, 51.5287] },
+      { name: "لولوة المهندي", area: "اللؤلؤة - بورتو أرابيا", coords: [25.3705, 51.5411] },
+      { name: "نورة الهاجري", area: "مدينة لوسيل", coords: [25.3998, 51.5127] },
+      { name: "سالم النصر", area: "الوعب", coords: [25.2524, 51.4795] },
+      { name: "شيخة الكبيسي", area: "عنّيزة", coords: [25.2267, 51.5268] },
+      { name: "جاسم المعضادي", area: "المطار القديم", coords: [25.2455, 51.5518] },
+      { name: "مريم المناعي", area: "الغرافة", coords: [25.3512, 51.4379] },
+      { name: "راشد الخليفي", area: "راس أبو عبود", coords: [25.2946, 51.5554] },
+    ];
+
+    const map = L.map("map", {
+      zoomControl: true,
+      worldCopyJump: true,
+    }).setView([25.2854, 51.5310], 12);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    let activeMarker = null;
+
+    const studentsList = document.getElementById("students");
+
+    function setActiveStudent(index) {
+      document.querySelectorAll(".student").forEach((item, idx) => {
+        item.classList.toggle("active", idx === index);
+      });
+    }
+
+    function focusOnStudent(student, index) {
+      setActiveStudent(index);
+
+      const targetZoom = Math.max(map.getZoom(), 14);
+      map.flyTo(student.coords, targetZoom, { duration: 0.9, easeLinearity: 0.25 });
+
+      if (!activeMarker) {
+        activeMarker = L.marker(student.coords, { title: student.name }).addTo(map);
+      } else {
+        activeMarker.setLatLng(student.coords);
+      }
+
+      const popupContent = `<strong>${student.name}</strong><br />منطقة: ${student.area}`;
+      activeMarker.bindPopup(popupContent, { autoClose: true }).openPopup();
+    }
+
+    function buildList() {
+      students.forEach((student, index) => {
+        const item = document.createElement("li");
+        item.className = "student";
+        item.setAttribute("role", "button");
+        item.setAttribute("tabindex", "0");
+
+        const name = document.createElement("div");
+        name.className = "name";
+        name.textContent = student.name;
+
+        const area = document.createElement("div");
+        area.className = "area";
+        area.textContent = student.area;
+
+        item.appendChild(name);
+        item.appendChild(area);
+
+        item.addEventListener("click", () => focusOnStudent(student, index));
+        item.addEventListener("keypress", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            focusOnStudent(student, index);
+          }
+        });
+
+        studentsList.appendChild(item);
+      });
+    }
+
+    buildList();
+    focusOnStudent(students[0], 0);
+  </script>
+</body>
+</html>
