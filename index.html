@@ -608,17 +608,14 @@
       return R * c;
     }
 
-    async function computeRoute() {
+    function computeRoute() {
       if (selectedStudents.size === 0) {
         updateStatus("الرجاء اختيار طالب واحد على الأقل لحساب المسار.");
         return;
       }
 
-      routeButton.disabled = true;
-      updateStatus("جاري حساب أقصر مسار على الطرق...");
-
       const remaining = Array.from(selectedStudents).map((idx) => students[idx]);
-      const ordered = [];
+      const route = [];
       let current = { name: "المدرسة", coords: schoolCoords };
 
       while (remaining.length) {
@@ -634,45 +631,28 @@
         });
 
         const [next] = remaining.splice(nearestIndex, 1);
-        ordered.push(next);
+        route.push(next);
         current = next;
       }
 
-      const routeCoords = [schoolCoords, ...ordered.map((s) => s.coords), schoolCoords];
-      const coordsParam = routeCoords
-        .map(([lat, lon]) => `${lon},${lat}`)
-        .join(";");
+      const routeCoords = [schoolCoords, ...route.map((s) => s.coords), schoolCoords];
 
-      const url = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson`;
-
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("فشل جلب المسار من خدمة الطرق.");
-        const data = await response.json();
-        if (!data.routes || !data.routes.length) throw new Error("لم يتم العثور على مسار.");
-
-        const geometry = data.routes[0].geometry;
-        const path = geometry.coordinates.map(([lon, lat]) => [lat, lon]);
-
-        if (routeLayer) routeLayer.remove();
-        routeLayer = L.polyline(path, {
-          color: "#0f766e",
-          weight: 5,
-          opacity: 0.9,
-          lineJoin: "round",
-        }).addTo(map);
-
-        map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
-
-        updateStatus(
-          `تم إنشاء مسار على الطرق يمر بـ ${ordered.length} طالب/طلاب ويعود إلى المدرسة (مسافة زمنية تحسبها خدمة OSRM).`
-        );
-      } catch (error) {
-        console.error(error);
-        updateStatus("تعذر حساب المسار عبر الطرق. تأكد من الاتصال بالإنترنت ثم حاول مجدداً.");
-      } finally {
-        routeButton.disabled = false;
+      if (routeLayer) {
+        routeLayer.remove();
       }
+
+      routeLayer = L.polyline(routeCoords, {
+        color: "#0f766e",
+        weight: 5,
+        opacity: 0.85,
+        lineJoin: "round",
+      }).addTo(map);
+
+      map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+
+      updateStatus(
+        `تم إنشاء مسار يمر بـ ${route.length} طالب/طلاب والعودة إلى المدرسة (مسافة تقريبية على خط مستقيم).`
+      );
     }
 
     function buildList() {
@@ -725,7 +705,7 @@
     actionsContainer.className = "actions";
 
     const routeButton = document.createElement("button");
-    routeButton.textContent = "احسب أقصر مسار (طرق) يمر بجميع الطلاب المحددين";
+    routeButton.textContent = "احسب أقصر مسار يمر بجميع الطلاب المحددين";
     routeButton.addEventListener("click", computeRoute);
 
     const status = document.createElement("div");
