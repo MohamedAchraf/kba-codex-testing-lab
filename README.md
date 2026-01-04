@@ -2,8 +2,8 @@
 Khalid Bin Ahmed Preparatory School for Boys — Student Codex Testing Lab
 
 ## Purpose
-A sandbox repository for students to practice using Codex:
-- Fix bugs
-- Add tests
-- Refactor code
-- Improve documentation
+A sandbox repository for students to practice using Codex.
+
+## تشغيل العرض التفاعلي
+- افتح ملف `index.html` مباشرة في المتصفح (لا حاجة لخادم).
+- استعرض القائمة اليمنى لاختيار طالب، وستتحرك الخريطة التفاعلية في اليسار إلى موقعه داخل الدوحة مع ظهور علامة ونافذة معلومات.
