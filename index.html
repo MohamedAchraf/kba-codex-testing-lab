@@ -542,9 +542,9 @@
       <div>طريقة الاستخدام: اضغط على اسم الطالب للانتقال إلى موقعه على الخريطة.</div>
       <div>ملاحظة: البيانات تجريبية وليست مواقع حقيقية.</div>
     </div>
-  </header>
-
-  <main>
+    function setActiveStudent(originalIndex) {
+      document.querySelectorAll(".student").forEach((item) => {
+        item.classList.toggle("active", item.dataset.index === String(originalIndex));
     <div class="layout">
       <section class="map-card">
         <h2>الخريطة التفاعلية - الدوحة</h2>
@@ -642,7 +642,7 @@
       animationInProgress = true;
       updateStatus("جاري استعراض المسار من المدرسة ثم بين الطلاب...");
 
-      map.flyTo(schoolCoords, 13.5, { duration: 1.1, easeLinearity: 0.2 });
+      map.flyTo(schoolCoords, 13.5, { duration: 1.1, easeLinearity: 0.25 });
       await waitForMove();
       schoolMarker.openPopup();
 
@@ -650,17 +650,19 @@
         const stop = orderedStops[i];
         const legDuration = legs[i]?.duration;
         const minutesText = formatMinutes(legDuration);
-        map.flyTo(stop.coords, 15, { duration: 1.1, easeLinearity: 0.2 });
+        setActiveStudent(stop.idx);
+        map.flyTo(stop.student.coords, 15.5, { duration: 1.1, easeLinearity: 0.25 });
         await waitForMove();
         const marker = routeMarkers[i];
         if (marker) {
           marker
             .bindPopup(
-              `<strong>${i + 1}. ${stop.name}</strong><br />منطقة: ${stop.area}<br />وقت المقطع: ${minutesText}`
+              `<strong>${i + 1}. ${stop.student.name}</strong><br />منطقة: ${stop.student.area}<br />وقت المقطع: ${minutesText}`
             )
             .openPopup();
         }
-        updateStatus(`الآن عند ${i + 1}. ${stop.name} — وقت المقطع: ${minutesText}`);
+        updateStatus(`الآن عند ${i + 1}. ${stop.student.name} — وقت المقطع: ${minutesText}`);
+        await new Promise((resolve) => setTimeout(resolve, 1200));
       }
 
       map.fitBounds(bounds, { padding: [40, 40], animate: true, duration: 1.1 });
@@ -669,16 +671,23 @@
       animationInProgress = false;
     }
 
-    function focusOnStudent(student, index) {
-      setActiveStudent(index);
+      const remaining = Array.from(selectedStudents).map((idx) => ({ idx, student: students[idx] }));
+        remaining.forEach((entry, idx) => {
+          const dist = haversineDistance(current.coords, entry.student.coords);
+        current = next.student;
+      const routeCoords = [schoolCoords, ...ordered.map((s) => s.student.coords), schoolCoords];
 
-      const targetZoom = Math.max(map.getZoom(), 14);
-      map.flyTo(student.coords, targetZoom, { duration: 0.9, easeLinearity: 0.25 });
+        renderList(ordered.map((o) => o.idx));
 
-      if (!activeMarker) {
-        activeMarker = L.marker(student.coords, {
-          title: student.name,
-          icon: studentMarkerIcon,
+        ordered.forEach((entry, idx) => {
+          const { student } = entry;
+    function renderList(orderIndices) {
+      studentsList.innerHTML = "";
+      orderIndices.forEach((index) => {
+        const student = students[index];
+        item.dataset.index = index;
+        checkbox.checked = selectedStudents.has(index);
+    renderList(students.map((_, idx) => idx));
         }).addTo(map);
       } else {
         activeMarker.setLatLng(student.coords);
