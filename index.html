@@ -504,18 +504,18 @@
   ></script>
   <script>
     const students = [
-      { name: "خالد المري", area: "كورنيش الدوحة", coords: [25.3009, 51.5384] },
-      { name: "حمد السويدي", area: "الدفنة", coords: [25.3330, 51.5271] },
-      { name: "عبدالله الكعبي", area: "السد", coords: [25.2819, 51.5134] },
-      { name: "سعيد النعيمي", area: "الريان القديم", coords: [25.2865, 51.4245] },
-      { name: "فهد العذبة", area: "مشيرب", coords: [25.2856, 51.5287] },
-      { name: "علي المهندي", area: "اللؤلؤة - بورتو أرابيا", coords: [25.3705, 51.5411] },
-      { name: "ناصر الهاجري", area: "مدينة لوسيل", coords: [25.3998, 51.5127] },
-      { name: "سالم النصر", area: "الوعب", coords: [25.2524, 51.4795] },
-      { name: "سعيد الكبيسي", area: "عنّيزة", coords: [25.2267, 51.5268] },
-      { name: "جاسم المعضادي", area: "المطار القديم", coords: [25.2455, 51.5518] },
-      { name: "مبارك المناعي", area: "الغرافة", coords: [25.3512, 51.4379] },
-      { name: "راشد الخليفي", area: "راس أبو عبود", coords: [25.2946, 51.5554] },
+      { name: "خالد المري", area: "الوعب", coords: [25.2275, 51.4550] },
+      { name: "حمد السويدي", area: "السد", coords: [25.2140, 51.4415] },
+      { name: "عبدالله الكعبي", area: "فريج السودان", coords: [25.2332, 51.4441] },
+      { name: "سعيد النعيمي", area: "المعيذر الجنوبي", coords: [25.2098, 51.4559] },
+      { name: "فهد العذبة", area: "مدينة خليفة الجنوبية", coords: [25.2380, 51.4585] },
+      { name: "علي المهندي", area: "فريج بن محمود", coords: [25.2296, 51.4370] },
+      { name: "ناصر الهاجري", area: "المنصورة", coords: [25.2165, 51.4623] },
+      { name: "سالم النصر", area: "حي الهلال", coords: [25.2035, 51.4450] },
+      { name: "سعيد الكبيسي", area: "المطار القديم", coords: [25.2445, 51.4340] },
+      { name: "جاسم المعضادي", area: "نعيجة", coords: [25.2325, 51.4700] },
+      { name: "مبارك المناعي", area: "أبو هامور", coords: [25.2045, 51.4750] },
+      { name: "راشد الخليفي", area: "الوعب الشمالي", coords: [25.2472, 51.4542] },
     ];
 
     const schoolCoords = [25.220293729084005, 51.4492324189286];
@@ -537,7 +537,7 @@
     const map = L.map("map", {
       zoomControl: true,
       worldCopyJump: true,
-    }).setView([25.2854, 51.5310], 12);
+    }).setView(schoolCoords, 13.5);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
@@ -563,7 +563,7 @@
     let activeMarker = null;
     let routeLayers = [];
     let routeMarkers = [];
-    let animationInProgress = false;
+    let routeState = { ordered: [], legs: [], bounds: null, current: -1 };
 
     const studentsList = document.getElementById("students");
     const selectedStudents = new Set();
@@ -663,39 +663,6 @@
       return `${mins} دقيقة تقريباً`;
     }
 
-    async function animateRoute(orderedStops, legs, bounds) {
-      animationInProgress = true;
-      updateStatus("جاري استعراض المسار من المدرسة ثم بين الطلاب...");
-
-      map.flyTo(schoolCoords, 13.5, { duration: 1.1, easeLinearity: 0.25 });
-      await waitForMove();
-      schoolMarker.openPopup();
-
-      for (let i = 0; i < orderedStops.length; i++) {
-        const stop = orderedStops[i];
-        const legDuration = legs[i]?.duration;
-        const minutesText = formatMinutes(legDuration);
-        setActiveStudent(stop.idx);
-        map.flyTo(stop.student.coords, 15.5, { duration: 1.1, easeLinearity: 0.25 });
-        await waitForMove();
-        const marker = routeMarkers[i];
-        if (marker) {
-          marker
-            .bindPopup(
-              `<strong>${i + 1}. ${stop.student.name}</strong><br />منطقة: ${stop.student.area}<br />وقت المقطع: ${minutesText}`
-            )
-            .openPopup();
-        }
-        updateStatus(`الآن عند ${i + 1}. ${stop.student.name} — وقت المقطع: ${minutesText}`);
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-      }
-
-      map.fitBounds(bounds, { padding: [40, 40], animate: true, duration: 1.1 });
-      await waitForMove();
-      updateStatus("تم استعراض المسار بالكامل مع أفضل تكبير.");
-      animationInProgress = false;
-    }
-
     async function computeRoute() {
       if (selectedStudents.size === 0) {
         updateStatus("الرجاء اختيار طالب واحد على الأقل لحساب المسار.");
@@ -787,16 +754,64 @@
         const bounds = L.latLngBounds(routeCoords.map(([lat, lon]) => [lat, lon]));
         routeLayers.forEach((layer) => bounds.extend(layer.getBounds()));
 
-        await animateRoute(ordered, legs, bounds);
+        routeState = { ordered, legs, bounds, current: -1 };
+        routeButton.disabled = false;
+        presentButton.disabled = false;
+        absentButton.disabled = false;
+
+        map.flyTo(schoolCoords, 13.5, { duration: 1, easeLinearity: 0.25 });
+        await waitForMove();
+        schoolMarker.openPopup();
         updateStatus(
-          `تم إنشاء مسار على الطرق يمر بـ ${ordered.length} طالب/طلاب ويعود إلى المدرسة مع تلوين كل مرحلة وترقيم نقاط الزيارة.`
+          `المسار جاهز. استخدم الأزرار للتنقل بين الطلاب بالترتيب (حاضر/غير موجود).`
         );
       } catch (error) {
         console.error(error);
         updateStatus("تعذر حساب المسار عبر الطرق. تأكد من الاتصال بالإنترنت ثم حاول مجدداً.");
       } finally {
-        routeButton.disabled = false;
+        if (routeButton.disabled) routeButton.disabled = false;
       }
+    }
+
+    async function goToNextStop(statusLabel) {
+      if (!routeState.ordered.length) {
+        updateStatus("لم يتم حساب مسار بعد.");
+        return;
+      }
+
+      routeState.current += 1;
+
+      if (routeState.current >= routeState.ordered.length) {
+        presentButton.disabled = true;
+        absentButton.disabled = true;
+        map.fitBounds(routeState.bounds, { padding: [40, 40], animate: true, duration: 1.1 });
+        await waitForMove();
+        updateStatus("تم استعراض كل الطلاب والعودة إلى أفضل عرض للمسار.");
+        return;
+      }
+
+      const stop = routeState.ordered[routeState.current];
+      const legDuration = routeState.legs[routeState.current]?.duration;
+      const minutesText = formatMinutes(legDuration);
+      setActiveStudent(stop.idx);
+
+      map.flyTo(stop.student.coords, 15.5, { duration: 1.1, easeLinearity: 0.25 });
+      await waitForMove();
+
+      const marker = routeMarkers[routeState.current];
+      if (marker) {
+        marker
+          .bindPopup(
+            `<strong>${routeState.current + 1}. ${stop.student.name}</strong><br />منطقة: ${
+              stop.student.area
+            }<br />وقت المقطع: ${minutesText}<br />الحالة: ${statusLabel}`
+          )
+          .openPopup();
+      }
+
+      updateStatus(
+        `الآن عند ${routeState.current + 1}. ${stop.student.name} — وقت المقطع: ${minutesText} — الحالة: ${statusLabel}`
+      );
     }
 
     function renderList(orderIndices) {
@@ -870,6 +885,16 @@
     routeButton.textContent = "احسب أقصر مسار (طرق) يمر بجميع الطلاب المحددين";
     routeButton.addEventListener("click", computeRoute);
 
+    const presentButton = document.createElement("button");
+    presentButton.textContent = "انتقال (حاضر)";
+    presentButton.disabled = true;
+    presentButton.addEventListener("click", () => goToNextStop("حاضر"));
+
+    const absentButton = document.createElement("button");
+    absentButton.textContent = "انتقال (غير موجود)";
+    absentButton.disabled = true;
+    absentButton.addEventListener("click", () => goToNextStop("غير موجود"));
+
     const status = document.createElement("div");
     status.id = "status";
     status.className = "status";
@@ -877,6 +902,8 @@
 
     actionsContainer.appendChild(selectAllButton);
     actionsContainer.appendChild(routeButton);
+    actionsContainer.appendChild(presentButton);
+    actionsContainer.appendChild(absentButton);
     actionsContainer.appendChild(status);
     document.querySelector(".list-card").appendChild(actionsContainer);
   </script>
