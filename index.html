@@ -416,11 +416,16 @@
       border: none;
       border-radius: 999px;
       padding: 6px 10px;
-      font-size: 0.85rem;
+      font-size: 0.95rem;
       cursor: pointer;
       color: #fff;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
       transition: transform 0.1s ease, box-shadow 0.1s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 44px;
+      justify-content: center;
     }
 
     .pill-btn:hover {
@@ -434,6 +439,16 @@
 
     .pill-absent {
       background: linear-gradient(120deg, #be123c, #e11d48);
+    }
+
+    .pill-btn.locked {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .pill-btn.chosen {
+      outline: 2px solid rgba(255, 255, 255, 0.7);
     }
 
     .status-chip {
@@ -454,6 +469,14 @@
     .status-chip.absent {
       background: #ffe4e6;
       color: #9f1239;
+    }
+
+    .chip-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 6px;
     }
 
     .actions {
@@ -955,7 +978,23 @@
         const statusText = routeState.statuses[idx];
         const chip = item.querySelector(".status-chip");
         if (chip) {
-          chip.textContent = statusText ? statusText : "لم يُحدد";
+          chip.innerHTML = "";
+          const dot = document.createElement("span");
+          dot.className = "chip-dot";
+          const label = document.createElement("span");
+          label.textContent = statusText ? statusText : "لم يُحدد";
+          chip.classList.remove("present", "absent");
+          if (statusText === "حاضر") {
+            chip.classList.add("present");
+            dot.style.background = "#16a34a";
+          } else if (statusText === "غائب") {
+            chip.classList.add("absent");
+            dot.style.background = "#e11d48";
+          } else {
+            dot.style.background = "#94a3b8";
+          }
+          chip.appendChild(dot);
+          chip.appendChild(label);
           chip.classList.toggle("present", statusText === "حاضر");
           chip.classList.toggle("absent", statusText === "غائب");
         }
@@ -965,6 +1004,14 @@
         if (routeState.current === pos) item.classList.add("active");
         else if (routeState.current > pos) item.classList.add("visited");
         else item.classList.add("upcoming");
+        const buttons = item.querySelectorAll(".pill-btn");
+        const locked = Boolean(routeState.statuses[idx]);
+        buttons.forEach((btn) => {
+          btn.disabled = locked;
+          btn.classList.toggle("locked", locked);
+          btn.classList.toggle("chosen", locked && btn.classList.contains("pill-present") && statusText === "حاضر");
+          btn.classList.toggle("chosen", locked && btn.classList.contains("pill-absent") && statusText === "غائب");
+        });
       });
     }
 
@@ -997,7 +1044,7 @@
 
         const presentBtn = document.createElement("button");
         presentBtn.className = "pill-btn pill-present";
-        presentBtn.textContent = "حاضر";
+        presentBtn.innerHTML = "✅";
         presentBtn.addEventListener("click", (event) => {
           event.stopPropagation();
           markAndAdvance(index, "حاضر");
@@ -1005,7 +1052,7 @@
 
         const absentBtn = document.createElement("button");
         absentBtn.className = "pill-btn pill-absent";
-        absentBtn.textContent = "غائب";
+        absentBtn.innerHTML = "✖️";
         absentBtn.addEventListener("click", (event) => {
           event.stopPropagation();
           markAndAdvance(index, "غائب");
