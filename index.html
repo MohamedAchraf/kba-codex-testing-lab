@@ -343,7 +343,7 @@
     .students {
       list-style: none;
       margin: 0;
-      padding: 10px;
+      padding: 10px 10px 4px;
       overflow-y: auto;
       flex: 1;
     }
@@ -352,14 +352,12 @@
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 10px;
-      padding: 12px 14px;
+      padding: 10px 12px;
       margin-bottom: 10px;
       cursor: pointer;
       transition: all 0.2s ease;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .student:hover {
@@ -377,11 +375,63 @@
     .student .name {
       font-weight: 700;
       color: var(--text);
+      flex: 1;
     }
 
     .student .area {
       color: var(--muted);
       font-size: 0.9rem;
+    }
+
+    .student .controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .student input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .actions {
+      padding: 10px;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .actions button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      background: linear-gradient(120deg, var(--primary), var(--primary-light));
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(15, 118, 110, 0.22);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .actions button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(15, 118, 110, 0.28);
+    }
+
+    .actions button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.95rem;
     }
 
     .hint {
@@ -466,6 +516,8 @@
       { name: "راشد الخليفي", area: "راس أبو عبود", coords: [25.2946, 51.5554] },
     ];
 
+    const schoolCoords = [25.220293729084005, 51.4492324189286];
+
     const map = L.map("map", {
       zoomControl: true,
       worldCopyJump: true,
@@ -484,9 +536,19 @@
       popupAnchor: [0, -40],
     });
 
+    const schoolMarker = L.marker(schoolCoords, {
+      title: "مدرسة خالد بن أحمد الإعدادية للبنين",
+      icon: studentMarkerIcon,
+    })
+      .addTo(map)
+      .bindPopup("مدرسة خالد بن أحمد الإعدادية للبنين")
+      .openPopup();
+
     let activeMarker = null;
+    let routeLayer = null;
 
     const studentsList = document.getElementById("students");
+    const selectedStudents = new Set();
 
     function setActiveStudent(index) {
       document.querySelectorAll(".student").forEach((item, idx) => {
@@ -514,12 +576,103 @@
       activeMarker.bindPopup(popupContent, { autoClose: true }).openPopup();
     }
 
+    function updateStatus(message) {
+      const statusEl = document.getElementById("status");
+      if (statusEl) statusEl.textContent = message;
+    }
+
+    function toggleSelection(index, checkboxEl) {
+      if (selectedStudents.has(index)) {
+        selectedStudents.delete(index);
+      } else {
+        selectedStudents.add(index);
+      }
+      checkboxEl.checked = selectedStudents.has(index);
+      checkboxEl.setAttribute("aria-checked", checkboxEl.checked);
+      updateStatus(
+        selectedStudents.size
+          ? `عدد الطلاب المحددين: ${selectedStudents.size}`
+          : "اختر طلاباً ثم اضغط على زر حساب المسار."
+      );
+    }
+
+    function haversineDistance([lat1, lon1], [lat2, lon2]) {
+      const toRad = (deg) => (deg * Math.PI) / 180;
+      const R = 6371e3;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function computeRoute() {
+      if (selectedStudents.size === 0) {
+        updateStatus("الرجاء اختيار طالب واحد على الأقل لحساب المسار.");
+        return;
+      }
+
+      const remaining = Array.from(selectedStudents).map((idx) => students[idx]);
+      const route = [];
+      let current = { name: "المدرسة", coords: schoolCoords };
+
+      while (remaining.length) {
+        let nearestIndex = 0;
+        let nearestDist = Infinity;
+
+        remaining.forEach((student, idx) => {
+          const dist = haversineDistance(current.coords, student.coords);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestIndex = idx;
+          }
+        });
+
+        const [next] = remaining.splice(nearestIndex, 1);
+        route.push(next);
+        current = next;
+      }
+
+      const routeCoords = [schoolCoords, ...route.map((s) => s.coords), schoolCoords];
+
+      if (routeLayer) {
+        routeLayer.remove();
+      }
+
+      routeLayer = L.polyline(routeCoords, {
+        color: "#0f766e",
+        weight: 5,
+        opacity: 0.85,
+        lineJoin: "round",
+      }).addTo(map);
+
+      map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+
+      updateStatus(
+        `تم إنشاء مسار يمر بـ ${route.length} طالب/طلاب والعودة إلى المدرسة (مسافة تقريبية على خط مستقيم).`
+      );
+    }
+
     function buildList() {
       students.forEach((student, index) => {
         const item = document.createElement("li");
         item.className = "student";
         item.setAttribute("role", "button");
         item.setAttribute("tabindex", "0");
+
+        const controls = document.createElement("div");
+        controls.className = "controls";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.setAttribute("aria-label", `تحديد ${student.name} للمسار`);
+        checkbox.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleSelection(index, checkbox);
+        });
+        controls.appendChild(checkbox);
 
         const name = document.createElement("div");
         name.className = "name";
@@ -529,6 +682,7 @@
         area.className = "area";
         area.textContent = student.area;
 
+        item.appendChild(controls);
         item.appendChild(name);
         item.appendChild(area);
 
@@ -546,6 +700,22 @@
 
     buildList();
     focusOnStudent(students[0], 0);
+
+    const actionsContainer = document.createElement("div");
+    actionsContainer.className = "actions";
+
+    const routeButton = document.createElement("button");
+    routeButton.textContent = "احسب أقصر مسار يمر بجميع الطلاب المحددين";
+    routeButton.addEventListener("click", computeRoute);
+
+    const status = document.createElement("div");
+    status.id = "status";
+    status.className = "status";
+    status.textContent = "اختر طلاباً ثم اضغط على زر حساب المسار.";
+
+    actionsContainer.appendChild(routeButton);
+    actionsContainer.appendChild(status);
+    document.querySelector(".list-card").appendChild(actionsContainer);
   </script>
 </body>
 </html>
