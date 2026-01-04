@@ -567,9 +567,9 @@
     const selectedStudents = new Set();
     const selectionMarkers = new Map();
 
-    function setActiveStudent(index) {
-      document.querySelectorAll(".student").forEach((item, idx) => {
-        item.classList.toggle("active", idx === index);
+    function setActiveStudent(originalIndex) {
+      document.querySelectorAll(".student").forEach((item) => {
+        item.classList.toggle("active", item.dataset.index === String(originalIndex));
       });
     }
 
@@ -665,7 +665,7 @@
       animationInProgress = true;
       updateStatus("جاري استعراض المسار من المدرسة ثم بين الطلاب...");
 
-      map.flyTo(schoolCoords, 13.5, { duration: 1.1, easeLinearity: 0.2 });
+      map.flyTo(schoolCoords, 13.5, { duration: 1.1, easeLinearity: 0.25 });
       await waitForMove();
       schoolMarker.openPopup();
 
@@ -673,17 +673,19 @@
         const stop = orderedStops[i];
         const legDuration = legs[i]?.duration;
         const minutesText = formatMinutes(legDuration);
-        map.flyTo(stop.coords, 15, { duration: 1.1, easeLinearity: 0.2 });
+        setActiveStudent(stop.idx);
+        map.flyTo(stop.student.coords, 15.5, { duration: 1.1, easeLinearity: 0.25 });
         await waitForMove();
         const marker = routeMarkers[i];
         if (marker) {
           marker
             .bindPopup(
-              `<strong>${i + 1}. ${stop.name}</strong><br />منطقة: ${stop.area}<br />وقت المقطع: ${minutesText}`
+              `<strong>${i + 1}. ${stop.student.name}</strong><br />منطقة: ${stop.student.area}<br />وقت المقطع: ${minutesText}`
             )
             .openPopup();
         }
-        updateStatus(`الآن عند ${i + 1}. ${stop.name} — وقت المقطع: ${minutesText}`);
+        updateStatus(`الآن عند ${i + 1}. ${stop.student.name} — وقت المقطع: ${minutesText}`);
+        await new Promise((resolve) => setTimeout(resolve, 1200));
       }
 
       map.fitBounds(bounds, { padding: [40, 40], animate: true, duration: 1.1 });
@@ -701,7 +703,7 @@
       routeButton.disabled = true;
       updateStatus("جاري حساب أقصر مسار على الطرق...");
 
-      const remaining = Array.from(selectedStudents).map((idx) => students[idx]);
+      const remaining = Array.from(selectedStudents).map((idx) => ({ idx, student: students[idx] }));
       const ordered = [];
       let current = { name: "المدرسة", coords: schoolCoords };
 
@@ -709,8 +711,8 @@
         let nearestIndex = 0;
         let nearestDist = Infinity;
 
-        remaining.forEach((student, idx) => {
-          const dist = haversineDistance(current.coords, student.coords);
+        remaining.forEach((entry, idx) => {
+          const dist = haversineDistance(current.coords, entry.student.coords);
           if (dist < nearestDist) {
             nearestDist = dist;
             nearestIndex = idx;
@@ -719,10 +721,10 @@
 
         const [next] = remaining.splice(nearestIndex, 1);
         ordered.push(next);
-        current = next;
+        current = next.student;
       }
 
-      const routeCoords = [schoolCoords, ...ordered.map((s) => s.coords), schoolCoords];
+      const routeCoords = [schoolCoords, ...ordered.map((s) => s.student.coords), schoolCoords];
       const coordsParam = routeCoords
         .map(([lat, lon]) => `${lon},${lat}`)
         .join(";");
@@ -761,7 +763,10 @@
           }
         });
 
-        ordered.forEach((student, idx) => {
+        renderList(ordered.map((o) => o.idx));
+
+        ordered.forEach((entry, idx) => {
+          const { student } = entry;
           const orderNumber = idx + 1;
           const marker = L.marker(student.coords, {
             icon: L.divIcon({
@@ -792,10 +797,13 @@
       }
     }
 
-    function buildList() {
-      students.forEach((student, index) => {
+    function renderList(orderIndices) {
+      studentsList.innerHTML = "";
+      orderIndices.forEach((index) => {
+        const student = students[index];
         const item = document.createElement("li");
         item.className = "student";
+        item.dataset.index = index;
         item.setAttribute("role", "button");
         item.setAttribute("tabindex", "0");
 
@@ -804,6 +812,7 @@
 
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
+        checkbox.checked = selectedStudents.has(index);
         checkbox.setAttribute("aria-label", `تحديد ${student.name} للمسار`);
         checkbox.addEventListener("click", (event) => {
           event.stopPropagation();
@@ -835,7 +844,7 @@
       });
     }
 
-    buildList();
+    renderList(students.map((_, idx) => idx));
     focusOnStudent(students[0], 0);
 
     const actionsContainer = document.createElement("div");
