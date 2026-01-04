@@ -374,6 +374,15 @@
       box-shadow: 0 8px 22px rgba(15, 118, 110, 0.18);
     }
 
+    .student.visited {
+      background: #f0fdf4;
+      border-color: #22c55e;
+    }
+
+    .student.upcoming {
+      opacity: 0.8;
+    }
+
     .student .name {
       font-weight: 700;
       color: var(--text);
@@ -425,6 +434,26 @@
 
     .pill-absent {
       background: linear-gradient(120deg, #be123c, #e11d48);
+    }
+
+    .status-chip {
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #0f172a;
+      background: #e2e8f0;
+      white-space: nowrap;
+    }
+
+    .status-chip.present {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-chip.absent {
+      background: #ffe4e6;
+      color: #9f1239;
     }
 
     .actions {
@@ -614,6 +643,7 @@
     let navNext;
     let navLast;
     let navSchool;
+    let currentOrder = [];
 
     const studentsList = document.getElementById("students");
     const selectedStudents = new Set();
@@ -867,6 +897,7 @@
       updateStatus(
         `الآن عند ${clamped + 1}. ${stop.student.name} — وقت المقطع: ${minutesText} — الحالة: ${statusText}`
       );
+      refreshListVisuals();
     }
 
     async function markAndAdvance(idx, label) {
@@ -916,8 +947,30 @@
       updateStatus("تم الانتقال إلى المدرسة.");
     }
 
+    function refreshListVisuals() {
+      const listItems = document.querySelectorAll(".student");
+      listItems.forEach((item) => {
+        const idx = Number(item.dataset.index);
+        item.classList.remove("active", "visited", "upcoming");
+        const statusText = routeState.statuses[idx];
+        const chip = item.querySelector(".status-chip");
+        if (chip) {
+          chip.textContent = statusText ? statusText : "لم يُحدد";
+          chip.classList.toggle("present", statusText === "حاضر");
+          chip.classList.toggle("absent", statusText === "غائب");
+        }
+        if (!routeState.ordered.length) return;
+        const pos = routeState.orderLookup[idx];
+        if (pos == null) return;
+        if (routeState.current === pos) item.classList.add("active");
+        else if (routeState.current > pos) item.classList.add("visited");
+        else item.classList.add("upcoming");
+      });
+    }
+
     function renderList(orderIndices) {
       studentsList.innerHTML = "";
+      currentOrder = [...orderIndices];
       orderIndices.forEach((index) => {
         const student = students[index];
         const item = document.createElement("li");
@@ -961,6 +1014,10 @@
         pillGroup.appendChild(presentBtn);
         pillGroup.appendChild(absentBtn);
 
+        const chip = document.createElement("span");
+        chip.className = "status-chip";
+        chip.textContent = routeState.statuses[index] || "لم يُحدد";
+
         const name = document.createElement("div");
         name.className = "name";
         name.textContent = student.name;
@@ -971,6 +1028,7 @@
 
         item.appendChild(controls);
         item.appendChild(pillGroup);
+        item.appendChild(chip);
         item.appendChild(name);
         item.appendChild(area);
 
@@ -984,6 +1042,7 @@
 
         studentsList.appendChild(item);
       });
+      refreshListVisuals();
     }
 
     renderList(students.map((_, idx) => idx));
